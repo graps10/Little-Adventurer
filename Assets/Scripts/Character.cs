@@ -14,6 +14,8 @@ public class Character : MonoBehaviour
     public float gravity = -9.8f;
     private Animator animator;
 
+    public int coins;
+
     // Enemy
     public bool isPlayer = true;
     private NavMeshAgent navMeshAgent;
@@ -24,6 +26,11 @@ public class Character : MonoBehaviour
     public float attackSlideDuration = 0.4f;
     public float attackSlideSpeed = 0.06f;
 
+    private Vector3 impactOnCharacter;
+
+    private bool isInvincible;
+    private float invincibleDuration = 2f;
+
     // Health
     private Health health;
 
@@ -33,7 +40,7 @@ public class Character : MonoBehaviour
     // State Machine
     public enum CharacterState
     {
-        Normal, Attaking, Dead
+        Normal, Attaking, Dead, BeingHit
     }
     public CharacterState currentState;
 
@@ -117,6 +124,13 @@ public class Character : MonoBehaviour
             break;
             case CharacterState.Dead:
             return;
+            case CharacterState.BeingHit:
+            if(impactOnCharacter.magnitude > 0.2f)
+            {
+                movementVelocity = impactOnCharacter * Time.deltaTime;
+            }
+            impactOnCharacter = Vector3.Lerp(impactOnCharacter, Vector3.zero, Time.deltaTime * 5);
+            break;
         }
         
 
@@ -132,6 +146,7 @@ public class Character : MonoBehaviour
             movementVelocity += verticalVelocity * Vector3.up * Time.deltaTime;
 
             cC.Move(movementVelocity);
+            movementVelocity = Vector3.zero;
         }
     }
 
@@ -156,7 +171,10 @@ public class Character : MonoBehaviour
             break;
             case CharacterState.Dead:
             return;
+            case CharacterState.BeingHit:
+            break;
         }
+
         // Entering State
         switch(newState)
         {
@@ -181,6 +199,14 @@ public class Character : MonoBehaviour
             animator.SetTrigger("Dead");
             StartCoroutine(MaterialDissolve());
             break;
+            case CharacterState.BeingHit:
+            animator.SetTrigger("BeingHit");
+            if(isPlayer)
+            {
+                isInvincible = true;
+                StartCoroutine(DelayCancelInvincible());
+            }
+            break;
         }
         currentState =  newState;
 
@@ -190,8 +216,14 @@ public class Character : MonoBehaviour
     {
         SwitchToState(CharacterState.Normal);
     }
+    public void BeingHitAnimationEnds()
+    {
+        SwitchToState(CharacterState.Normal);
+    }
     public void ApplyDamage(int damage, Vector3 attackerPos = new Vector3())
     {
+        if(isInvincible){return;}
+
         if(health != null)
         {
             health.ApplyDamage(damage);
@@ -201,6 +233,25 @@ public class Character : MonoBehaviour
             GetComponent<EnemyVFXManager>().PlayBeingHitVFX(attackerPos);
         }
         StartCoroutine(MaterialBlink());
+
+        if(isPlayer)
+        {
+            SwitchToState(CharacterState.BeingHit);
+            AddImpact(attackerPos, 10f);
+        }
+    }
+    IEnumerator DelayCancelInvincible()
+    {
+        yield return new WaitForSeconds(invincibleDuration);
+        isInvincible = false;
+    }
+    public void AddImpact(Vector3 attackerPos, float force)
+    {
+        Vector3 impactDir = transform.position - attackerPos;
+        impactDir.Normalize();
+        impactDir.y = 0;
+        impactOnCharacter = impactDir * force;
+
     }
     public void EnableDamageCaster()
     {
@@ -249,5 +300,26 @@ public class Character : MonoBehaviour
         {
             Instantiate(itemToDrop, transform.position, Quaternion.identity);
         }
+    }
+    public void PickUpItem(PickUp item)
+    {
+        switch(item.type)
+        {
+            case PickUp.PickUpIType.Heal:
+            AddHealth(item.value);
+            break;
+            case PickUp.PickUpIType.Coin:
+            AddCoins(item.value);
+            break;
+        }
+    }
+    private void AddHealth(int health)
+    {
+        this.health.AddHealth(health);
+        GetComponent<PlayerVFXManager>().PlayHealVFX();
+    }
+    private void AddCoins(int coins)
+    {
+        this.coins = coins;
     }
 }

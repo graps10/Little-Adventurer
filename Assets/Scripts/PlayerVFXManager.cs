@@ -7,6 +7,7 @@ public class PlayerVFXManager : MonoBehaviour
     public VisualEffect footStep;
     public ParticleSystem blade01;
     public VisualEffect slash;
+    public VisualEffect heal;
 
     public void Update_FootStep(bool state)
     {
@@ -21,5 +22,9 @@ public class PlayerVFXManager : MonoBehaviour
     {
         slash.transform.position = pos;
         slash.Play();
+    }
+    public void PlayHealVFX()
+    {
+        heal.Play();
     }
 }
