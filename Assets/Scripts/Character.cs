@@ -30,6 +30,7 @@ public class Character : MonoBehaviour
 
     private bool isInvincible;
     private float invincibleDuration = 2f;
+    private float attackAnimationDuration;
 
     // Health
     private Health health;
@@ -120,6 +121,16 @@ public class Character : MonoBehaviour
                     float lerpTime = timePassed / attackSlideDuration;
                     movementVelocity = Vector3.Lerp(transform.forward * attackSlideSpeed, Vector3.zero, lerpTime);
                 }
+                if(playerInput.mouseButtonDown && cC.isGrounded)
+                {
+                    string currentClipName = animator.GetCurrentAnimatorClipInfo(0)[0].clip.name;
+                    attackAnimationDuration = animator.GetCurrentAnimatorStateInfo(0).normalizedTime;
+                    if(currentClipName != "LittleAdventurerAndie_ATTACK_03" && attackAnimationDuration > 0.5f && attackAnimationDuration < 0.7f)
+                    {
+                        SwitchToState(CharacterState.Attaking);
+                        CalculatePlayerMovement();
+                    }
+                }
             }
             break;
             case CharacterState.Dead:
@@ -168,6 +179,7 @@ public class Character : MonoBehaviour
             {
                 DisableDamageCaster();
             }
+            if(isPlayer){GetComponent<PlayerVFXManager>().StopBlade();}
             break;
             case CharacterState.Dead:
             return;
